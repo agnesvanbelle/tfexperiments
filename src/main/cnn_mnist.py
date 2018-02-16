@@ -26,7 +26,7 @@ def cnn_model_fn(features, labels, mode):
   pool1 = tf.layers.max_pooling2d(inputs = conv1, pool_size=[2,2], strides=2)
   
   conv2 = tf.layers.conv2d(inputs = pool1, 
-                           filters=64, 
+                           filters = 64, 
                            kernel_size=[5,5],
                            padding = "same",
                            activation = tf.nn.relu)
@@ -62,7 +62,7 @@ def cnn_model_fn(features, labels, mode):
   }
   return tf.estimator.EstimatorSpec(mode = mode, loss = loss, eval_metric_ops = eval_metrics_ops)
   
-def main(argv):
+def main(argv, train=False, test=True):
   print("hi")
   print(argv)
   mnist = tf.contrib.learn.datasets.load_dataset("mnist")
@@ -74,25 +74,25 @@ def main(argv):
   mnist_classifier = tf.estimator.Estimator(model_fn = cnn_model_fn, model_dir = "../../data/mnist_model")
   tensors_to_log = {"my classes" : "classes"}
   logging_hook = tf.train.LoggingTensorHook(tensors = tensors_to_log, every_n_iter = 50)
-  
-  train_input_fn  = tf.estimator.inputs.numpy_input_fn (
-    x = {"x": train_data},
-    y = train_labels,
-    batch_size = 100,
-    num_epochs = None,
-    shuffle=True)
-  mnist_classifier.train( input_fn = train_input_fn, 
-                          steps = 1000,
-                          hooks = [logging_hook])
-  
-  eval_input_fn = tf.estimator.inputs.numpy_input_fn (
-    x = {"x": eval_data},
-    y = eval_labels,
-    num_epochs = 1,
-    shuffle = False
-    )
-  eval_results = mnist_classifier.evaluate(input_fn = eval_input_fn)
-  print('eval results:', eval_results)
+  if train:
+    train_input_fn  = tf.estimator.inputs.numpy_input_fn (
+      x = {"x": train_data},
+      y = train_labels,
+      batch_size = 100,
+      num_epochs = None,
+      shuffle=True)
+    mnist_classifier.train( input_fn = train_input_fn, 
+                            steps = 1000,
+                            hooks = [logging_hook])
+  if test:
+    eval_input_fn = tf.estimator.inputs.numpy_input_fn (
+      x = {"x": eval_data},
+      y = eval_labels,
+      num_epochs = 1,
+      shuffle = False
+      )
+    eval_results = mnist_classifier.evaluate(input_fn = eval_input_fn)
+    print('eval results:', eval_results)
   
 if __name__=="__main__":
   tf.app.run(main)
