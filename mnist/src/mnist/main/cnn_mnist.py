@@ -71,7 +71,7 @@ def main(argv, train=False, test=True):
   eval_data = mnist.test.images
   eval_labels = np.asarray(mnist.test.labels, dtype=np.int32)
   
-  mnist_classifier = tf.estimator.Estimator(model_fn = cnn_model_fn, model_dir = "../../data/mnist_model")
+  mnist_classifier = tf.estimator.Estimator(model_fn = cnn_model_fn, model_dir = "../../../data/mnist_model")
   tensors_to_log = {"my classes" : "classes"}
   logging_hook = tf.train.LoggingTensorHook(tensors = tensors_to_log, every_n_iter = 50)
   if train:
