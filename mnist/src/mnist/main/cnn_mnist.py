@@ -3,6 +3,7 @@ from __future__ import division
 from __future__ import print_function
 import numpy as np
 import tensorflow as tf
+import sys
 
 tf.logging.set_verbosity(tf.logging.INFO)
 
@@ -10,34 +11,36 @@ def cnn_model_fn(features, labels, mode):
   '''
   the -1 signifies that the batch_size dimension will be dynamically calculated based on the 
   number of examples in our input data.'''
-  input_layer = tf.reshape(features["x"], [-1, 28, 28, 1])
+  input_layer = tf.reshape(features["x"], [-1, 28, 28, 1], name="input_layer")
   
   '''
   apply 32 5x5 filters to the input layer.
-  Our output tensor produced by conv2d() has a shape of [batch_size, 28, 28, 32].'''
+  Our output tensor produced by conv2d() has a shape of [batch_size, 28, 28, 100].'''
   conv1 = tf.layers.conv2d( inputs = input_layer,
-                            filters = 32,
+                            filters = 101,
                             kernel_size=[5,5],
                             padding="same",
-                            activation = tf.nn.relu)
+                            activation = tf.nn.relu,
+                            name = "5x5_filter_layer")
   ''' 
-  Our output tensor produced by max_pooling2d() (pool1) has a shape of [batch_size, 14, 14, 32]: 
+  Our output tensor produced by max_pooling2d() (pool1) has a shape of [batch_size, 14, 14, 100]: 
   the 2x2 filter reduces width and height by 50% each.'''
-  pool1 = tf.layers.max_pooling2d(inputs = conv1, pool_size=[2,2], strides=2)
+  pool1 = tf.layers.max_pooling2d(inputs = conv1, pool_size=[2,2], strides=2, name="max_pooling_1")
   
   conv2 = tf.layers.conv2d(inputs = pool1, 
                            filters = 64, 
                            kernel_size=[5,5],
                            padding = "same",
-                           activation = tf.nn.relu)
+                           activation = tf.nn.relu,
+                           name = "5x5_filter_layer_2")
   '''
   pool2 has shape [batch_size, 7, 7, 64] (50% reduction of width and height from conv2).'''
-  pool2 = tf.layers.max_pooling2d(inputs = conv2, pool_size=[2,2], strides=2)
+  pool2 = tf.layers.max_pooling2d(inputs = conv2, pool_size=[2,2], strides=2, name="max_pooling2")
   
   pool2_flat = tf.reshape(pool2, [-1, 7 * 7 * 64])
-  dense = tf.layers.dense(inputs = pool2_flat, units = 1024, activation = tf.nn.relu)
-  dropout = tf.layers.dropout(inputs = dense, rate = 0.4, training = mode == tf.estimator.ModeKeys.TRAIN)
-  logits = tf.layers.dense(inputs = dropout, units = 10)
+  dense = tf.layers.dense(inputs = pool2_flat, units = 1024, activation = tf.nn.relu, name="dense")
+  dropout = tf.layers.dropout(inputs = dense, rate = 0.4, training = mode == tf.estimator.ModeKeys.TRAIN, name="dropout")
+  logits = tf.layers.dense(inputs = dropout, units = 10, name="logits")
   
   predictions = {
     "classes": tf.argmax(input = logits, axis=1, name="classes"), # our logits tensor has shape [batch_size, 10]
@@ -62,7 +65,7 @@ def cnn_model_fn(features, labels, mode):
   }
   return tf.estimator.EstimatorSpec(mode = mode, loss = loss, eval_metric_ops = eval_metrics_ops)
   
-def main(argv, train=False, test=True):
+def main(argv, train=True, test=False):
   print("hi")
   print(argv)
   mnist = tf.contrib.learn.datasets.load_dataset("mnist")
@@ -71,9 +74,12 @@ def main(argv, train=False, test=True):
   eval_data = mnist.test.images
   eval_labels = np.asarray(mnist.test.labels, dtype=np.int32)
   
+
   mnist_classifier = tf.estimator.Estimator(model_fn = cnn_model_fn, model_dir = "../../../data/mnist_model")
   tensors_to_log = {"my classes" : "classes"}
   logging_hook = tf.train.LoggingTensorHook(tensors = tensors_to_log, every_n_iter = 50)
+  
+
   if train:
     train_input_fn  = tf.estimator.inputs.numpy_input_fn (
       x = {"x": train_data},
@@ -96,8 +102,8 @@ def main(argv, train=False, test=True):
   
 if __name__=="__main__":
   tf.app.run(main)
-  
-  
-  
+    
+# tensorboard tensorboard --logdir=mnist/data/mnist_model
+
   
   
