@@ -11,7 +11,10 @@ import numpy as np
 from PIL import Image
 import tensorflow.contrib.layers as lays
 
-folder = "/data/users/vanbelle/pic2/images/"
+
+
+#folder = "/data/users/vanbelle/pic2/images/"
+folder = "data/images_sample/"
 
 max_img = 1000
 
@@ -39,7 +42,7 @@ max_width, max_height = 640, 640 # find_max_min_size()[0][0], find_max_min_size(
 print("max width:", max_width)
 print("max height:", max_height)
 
-resize_to_size = 32
+resize_to_size = 128 #256
 
 def get_image_list():
   l = []
@@ -58,7 +61,9 @@ def get_image_list():
       i += 1
       if i > max_img:
         break
-      
+      if i % 100 == 0:
+        print("processed {:d} images".format(i))
+        
       max_dim = max(max_width, max_height)
       largest_dim = np.argmax(img.shape)
       scale_factor = max_dim / img.shape[largest_dim]
@@ -77,52 +82,55 @@ def get_image_list():
       #plt.imshow(img)
       #plt.show()
       l.append(img)
+      #print(np.max(img), np.min(img))
   return l
 
 
 l = get_image_list()
 stacked_images = np.array(l)
 
-print(stacked_images.shape)
+print("stacked images shape:", stacked_images.shape)
 # 
-# 
+# https://github.com/giuseppebonaccorso/lossy_image_autoencoder/blob/master/Lossy%20Image%20Autoencoder.ipynb
 # https://stackoverflow.com/questions/34619177/what-does-tf-nn-conv2d-do-in-tensorflow
 # http://cs231n.github.io/convolutional-networks/
 # https://mourafiq.com/2016/08/10/playing-with-convolutions-in-tensorflow.html
 # https://github.com/mr-ravin/CNN-Autoencoders/blob/master/script.py
 def autoencoder(inputs):
   # encoder
-  # 32 x 32 x 1   ->  16 x 16 x 32
-  # 16 x 16 x 32  ->  8 x 8 x 16
-  # 8 x 8 x 16    ->  2 x 2 x 8
-  net = lays.conv2d(inputs, 32, [5, 5], stride=2, padding='SAME')
-  print(net)
-  net = lays.conv2d(net, 16, [5, 5], stride=2, padding='SAME')
-  net = lays.conv2d(net, 8, [5, 5], stride=4, padding='SAME')
+  # 
+  l1 = lays.conv2d(inputs, 32, [5, 5], stride=2, padding='SAME')
+  print("net after l1:", l1)
+  l2 = lays.conv2d(l1, 16, [5, 5], stride=2, padding='SAME')
+  print("net after l2:", l2)
+  l3 = lays.conv2d(l2, 8, [5, 5], stride=4, padding='SAME')
+  print("net after l3:", l3)
   # decoder
-  # 2 x 2 x 8    ->  8 x 8 x 16
-  # 8 x 8 x 16   ->  16 x 16 x 32
-  # 16 x 16 x 32  ->  32 x 32 x 1
-  net = lays.conv2d_transpose(net, 16, [5, 5], stride=4, padding='SAME')
-  net = lays.conv2d_transpose(net, 32, [5, 5], stride=2, padding='SAME')
-  net = lays.conv2d_transpose(net, 3, [5, 5], stride=2, padding='SAME', activation_fn=tf.nn.tanh)
-  return net
+  l4 = lays.conv2d_transpose(l3, 16, [5, 5], stride=4, padding='SAME')
+  print("net after l4:", l4)
+  l5 = lays.conv2d_transpose(l4, 32, [5, 5], stride=2, padding='SAME')
+  print("net after l5:", l5)
+  l6 = lays.conv2d_transpose(l5, 3, [5, 5], stride=2, padding='SAME', activation_fn=tf.nn.tanh)
+  print("net after l6:", l6)
+  return l3, l6
 
 
-ae_inputs = tf.placeholder(tf.float32, (None, 32, 32, 3))  # input to the network (images)
-ae_outputs = autoencoder(ae_inputs)  # create the Autoencoder network
+ae_inputs = tf.placeholder(tf.float32, (None, resize_to_size, resize_to_size, 3))  # input to the network (images)
+feature_layer, ae_outputs = autoencoder(ae_inputs)  # create the Autoencoder network
 # calculate the loss and optimize the network
-loss = tf.reduce_mean(tf.square(ae_outputs - ae_inputs))  # claculate the mean square error loss
-train_op = tf.train.AdamOptimizer(learning_rate=.01).minimize(loss)
+loss = tf.reduce_mean(tf.square(ae_outputs - ae_inputs))  # calculate the mean square error loss
+train_op = tf.train.AdamOptimizer(learning_rate=.001).minimize(loss)
 # initialize the network
 init = tf.global_variables_initializer()
 
-nr_train = int(0.9 * max_img)
+nr_train = int(0.9 * stacked_images.shape[0])
 train_part = stacked_images[:nr_train,]
 test_part = stacked_images[nr_train:,]
-print(train_part.shape, test_part.shape)
+print("train data shape: {:}, test data shape: {:}".format(train_part.shape, test_part.shape))
 
-nr_epochs = 500
+nr_epochs = 14
+
+writer = tf.summary.FileWriter('./graphs', tf.get_default_graph())
 
 with tf.Session() as sess:
   sess.run(init)
@@ -134,11 +142,19 @@ with tf.Session() as sess:
   
   print(reconstructed_images.shape)
   print(type(reconstructed_images))
-  
+
+writer.close()
+
 for i in range(reconstructed_images.shape[0]):
-  img = reconstructed_images[i,:]
-  print(img.shape)
-  plt.imshow(img)
+  img_orig = train_part[i,:]
+  img_recon = reconstructed_images[i,:]
+  print(img_recon.shape)
+  print(np.max(img_recon), np.min(img_recon))
+  fig = plt.figure()
+  fig.add_subplot(1, 2, 1)
+  plt.imshow(img_orig)
+  fig.add_subplot(1, 2, 2)
+  plt.imshow(img_recon)
   #plt.imshow(img)
   plt.show()
 
