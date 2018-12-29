@@ -103,7 +103,8 @@ def main(argv, train=True, test=False):
 if __name__=="__main__":
   tf.app.run(main)
     
-# tensorboard tensorboard --logdir=mnist/data/mnist_model
+ 
+#tensorboard --logdir="./data/mnist_model/" --port 6006
 
   
   

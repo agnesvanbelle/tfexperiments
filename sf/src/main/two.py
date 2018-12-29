@@ -39,8 +39,9 @@ W = tf.get_variable("mybig_matrix", shape=(784, 10), initializer=tf.zeros_initia
 assign_op = W.assign(tf.random_uniform(W.shape))
 with tf.Session() as sess:
   #print(sess.graph.as_graph_def())
-  #sess.run(tf.global_variables_initializer())
+  sess.run(tf.global_variables_initializer())
   #print("W:",sess.run(W))
+  print("s:",sess.run(s))
   sess.run(W.initializer)
   sess.run(assign_op)
   print(W.eval())
@@ -50,6 +51,13 @@ with tf.Session() as sess:
 my_var = tf.get_variable("my_var", initializer=tf.constant(2))
 
 
+##
+#  tensorboard --logdir="./graphs2" --port 6006
+#
+my_graph = tf.get_default_graph()
+for op in my_graph.get_operations(): 
+  print(op.name)
+    
   
 
 
