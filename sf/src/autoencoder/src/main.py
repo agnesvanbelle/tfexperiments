@@ -13,17 +13,17 @@ import tensorflow.contrib.layers as lays
 
 
 
-#folder = "/data/users/vanbelle/pic2/images/"
-folder = "data/images_sample/"
+#FOLDER = "/data/users/vanbelle/pic2/images/"
+FOLDER = "../data/images_sample/"
 
-max_img = 1000
+MAX_IMG = 1000
 
 def find_max_min_size():
   max_shape = (0,0,0) # 640, 640, 3
   min_shape = (sys.maxsize, sys.maxsize, sys.maxsize)
   i = 0
-  for f in os.listdir(folder):
-    subfolder = os.path.join(folder, f)
+  for f in os.listdir(FOLDER):
+    subfolder = os.path.join(FOLDER, f)
     if os.path.isfile(subfolder):
       continue
     for f in os.listdir(subfolder):
@@ -42,13 +42,13 @@ max_width, max_height = 640, 640 # find_max_min_size()[0][0], find_max_min_size(
 print("max width:", max_width)
 print("max height:", max_height)
 
-resize_to_size = 128 #256
+resize_to_size = 64#128 #256
 
 def get_image_list():
   l = []
   i = 0
-  for f in os.listdir(folder):
-    subfolder = os.path.join(folder, f)
+  for f in os.listdir(FOLDER):
+    subfolder = os.path.join(FOLDER, f)
     if os.path.isfile(subfolder):
       continue
     for f in os.listdir(subfolder):
@@ -59,7 +59,7 @@ def get_image_list():
       img = skimage.io.imread(full_path)
          
       i += 1
-      if i > max_img:
+      if i > MAX_IMG:
         break
       if i % 100 == 0:
         print("processed {:d} images".format(i))
@@ -92,10 +92,15 @@ stacked_images = np.array(l)
 print("stacked images shape:", stacked_images.shape)
 # 
 # https://github.com/giuseppebonaccorso/lossy_image_autoencoder/blob/master/Lossy%20Image%20Autoencoder.ipynb
+# https://towardsdatascience.com/cifar-10-image-classification-in-tensorflow-5b501f7dc77c
 # https://stackoverflow.com/questions/34619177/what-does-tf-nn-conv2d-do-in-tensorflow
 # http://cs231n.github.io/convolutional-networks/
 # https://mourafiq.com/2016/08/10/playing-with-convolutions-in-tensorflow.html
 # https://github.com/mr-ravin/CNN-Autoencoders/blob/master/script.py
+#https://github.com/arashsaber/Deep-Convolutional-AutoEncoder/blob/master/ConvolutionalAutoEncoder.py
+# https://towardsdatascience.com/autoencoder-for-converting-an-rbg-image-to-a-gray-scale-image-3c19a11031c9
+# https://k-d-w.org/blog/103/denoising-autoencoder-as-tensorflow-estimator
+#https://cv-tricks.com/tensorflow-tutorial/training-convolutional-neural-network-for-image-classification/
 def autoencoder(inputs):
   # encoder
   # 
@@ -110,7 +115,7 @@ def autoencoder(inputs):
   print("net after l4:", l4)
   l5 = lays.conv2d_transpose(l4, 32, [5, 5], stride=2, padding='SAME')
   print("net after l5:", l5)
-  l6 = lays.conv2d_transpose(l5, 3, [5, 5], stride=2, padding='SAME', activation_fn=tf.nn.tanh)
+  l6 = lays.conv2d_transpose(l5, 3, [5, 5], stride=2, padding='SAME', activation_fn=tf.nn.sigmoid)#tanh)
   print("net after l6:", l6)
   return l3, l6
 
@@ -119,7 +124,7 @@ ae_inputs = tf.placeholder(tf.float32, (None, resize_to_size, resize_to_size, 3)
 feature_layer, ae_outputs = autoencoder(ae_inputs)  # create the Autoencoder network
 # calculate the loss and optimize the network
 loss = tf.reduce_mean(tf.square(ae_outputs - ae_inputs))  # calculate the mean square error loss
-train_op = tf.train.AdamOptimizer(learning_rate=.001).minimize(loss)
+train_op = tf.train.AdamOptimizer(learning_rate=.005).minimize(loss)
 # initialize the network
 init = tf.global_variables_initializer()
 
@@ -128,7 +133,7 @@ train_part = stacked_images[:nr_train,]
 test_part = stacked_images[nr_train:,]
 print("train data shape: {:}, test data shape: {:}".format(train_part.shape, test_part.shape))
 
-nr_epochs = 14
+nr_epochs = 100
 
 writer = tf.summary.FileWriter('./graphs', tf.get_default_graph())
 
@@ -149,7 +154,9 @@ for i in range(reconstructed_images.shape[0]):
   img_orig = train_part[i,:]
   img_recon = reconstructed_images[i,:]
   print(img_recon.shape)
-  print(np.max(img_recon), np.min(img_recon))
+  print("dim1:", img_recon[:,:,0])
+  print("dim2:", img_recon[:,:,1])
+  print("dim3:", img_recon[:,:,2])
   fig = plt.figure()
   fig.add_subplot(1, 2, 1)
   plt.imshow(img_orig)
